@@ -60,7 +60,27 @@ chain = (
 )
 
 
-print(chain.invoke("What is BM25?"))
+#print(chain.invoke("What is BM25?"))
 
 
-print("hi")
+# Simple interactive console chatbot
+if __name__ == "__main__":
+    print("📚 RAG PDF Chatbot")
+    print("Ask me anything about the PDF.")
+    print("Type 'exit', 'quit', or press Ctrl+C to stop.\n")
+
+    while True:
+        try:
+            question = input("You: ").strip()
+            if question.lower() in {"exit", "quit", "q"}:
+                print("Bot: Goodbye! 👋")
+                break
+            if not question:
+                continue
+
+            answer = chain.invoke(question)
+            print(f"\nBot: {answer}\n")
+
+        except KeyboardInterrupt:
+            print("\nBot: Goodbye! 👋")
+            break
