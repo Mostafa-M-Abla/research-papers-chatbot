@@ -23,14 +23,32 @@ with open("pdf_pages_output.txt", "w", encoding="utf-8") as f:
 
 
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+    separators=["\n\n", "\n", " ", ""],  # try to respect paragraphs, then lines, then words
+)
+
 chunks = text_splitter.split_documents(pages)
+
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
 
 
-retriever = vectorstore.as_retriever()
+# Simple eretriever
+#retriever = vectorstore.as_retriever()
+
+# a mre complex retriever
+retriever = vectorstore.as_retriever(
+    search_type="mmr",
+    search_kwargs={
+        "k": 8,           # how many to return to the LLM
+        "fetch_k": 20,    # how many to consider before pruning similar ones
+        "lambda_mult": 0.5,  # 0 = diverse, 1 = similar; 0.5 is balanced
+    },
+)
+
 
 
 def format_docs(docs):
