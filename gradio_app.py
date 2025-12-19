@@ -66,7 +66,7 @@ def _make_runtime_retriever(k: int, search_type: str):
 
 def _rows_to_table(rows):
     """Convert list[dict] citation rows to a flat table (list[list]) for Gradio Dataframe."""
-    headers = ["rank", "file", "page", "snippet", "source_path"]
+    headers = ["rank", "file", "page", "snippet"]
     table = []
     for r in rows:
         table.append([r.get(h, "") for h in headers])
@@ -76,12 +76,10 @@ def _rows_to_table(rows):
 def answer_question(
     message: str,
     history: list,
-    show_chunks: bool,
-    top_k_to_show: int,
     retrieval_k: int,
     search_type: str,
 ):
-    """Main chat callback: retrieve -> build context -> answer -> optionally show evidence."""
+    """Main chat callback: retrieve -> build context -> answer -> show evidence."""
     message = (message or "").strip()
     if not message:
         return history, [], ""
@@ -101,14 +99,9 @@ def answer_question(
         {"role": "assistant", "content": answer},
     ]
 
-    rows = docs_to_citation_rows(docs, max_chars=260)[: int(top_k_to_show)]
-    evidence = _rows_to_table(rows) if show_chunks else []
-
-    # Short sources preview (always shown)
-    sources_lines = [f"[{r['rank']}] {r['file']} — Page {r['page']}" for r in rows[: min(5, len(rows))]]
-    sources_md = "\n".join(sources_lines) if sources_lines else ""
-
-    return history, evidence, sources_md
+    rows = docs_to_citation_rows(docs, max_chars=260)
+    evidence = _rows_to_table(rows)
+    return history, evidence, ""
 
 
 def clear_all():
@@ -116,17 +109,21 @@ def clear_all():
     return [], [], ""
 
 
-with gr.Blocks(title="RAG Research Papers Chatbot") as demo:
+with gr.Blocks(title="RAG Research Papers Chatbot", css="""
+footer {display:none !important;}
+.footer {display:none !important;}
+#footer {display:none !important;}
+.gradio-footer {display:none !important;}
+""") as demo:
     gr.Markdown(
         "# 📚 RAG Research Papers Chatbot\n"
         "Ask questions about the research papers in `research-papers/`.\n\n"
-        "**Tip:** Enable *Show retrieved chunks* to see the evidence used."
+        "**Tip:** Retrieved chunks are always shown in the Evidence table."
     )
 
     with gr.Row():
         with gr.Column(scale=3):
             chat = gr.Chatbot(label="Chat", height=520)
-            sources_preview = gr.Markdown(label="Sources (top few)")
             msg = gr.Textbox(
                 label="Your question",
                 placeholder="e.g., What is GraphRAG? How does LightRAG differ from OpenRAG?",
@@ -136,17 +133,30 @@ with gr.Blocks(title="RAG Research Papers Chatbot") as demo:
                 send = gr.Button("Send", variant="primary")
                 clear = gr.Button("Clear")
 
+            gr.HTML(
+                """
+                <a href="https://mostafaabla.com/projects.html" target="_self" style="text-decoration:none;">
+                    <button style="
+                        width:100%;
+                        padding:10px;
+                        border-radius:6px;
+                        border:1px solid #ccc;
+                        background:#f5f5f5;
+                        cursor:pointer;
+                    ">
+                        Back
+                    </button>
+                </a>
+                """
+            )
+
         with gr.Column(scale=2):
             gr.Markdown("## Retrieval & Evidence")
-            show_chunks = gr.Checkbox(value=False, label="Show retrieved chunks (evidence)")
-            top_k_to_show = gr.Slider(1, 15, value=8, step=1, label="Top-k chunks to display")
             retrieval_k = gr.Slider(1, 20, value=8, step=1, label="Retriever k (chunks fetched)")
             search_type = gr.Dropdown(choices=["mmr", "similarity"], value="mmr", label="Search type")
-
-            with gr.Accordion("Evidence table", open=False):
-                evidence_df = gr.Dataframe(
-                    headers=["rank", "file", "page", "snippet", "source_path"],
-                    datatype=["number", "str", "str", "str", "str"],
+            evidence_df = gr.Dataframe(
+                    headers=["rank", "file", "page", "snippet"],
+                    datatype=["number", "str", "str", "str"],
                     label="Retrieved chunks",
                     wrap=True,
                     interactive=False,
@@ -154,15 +164,15 @@ with gr.Blocks(title="RAG Research Papers Chatbot") as demo:
 
     send.click(
         answer_question,
-        inputs=[msg, chat, show_chunks, top_k_to_show, retrieval_k, search_type],
-        outputs=[chat, evidence_df, sources_preview],
+        inputs=[msg, chat, retrieval_k, search_type],
+        outputs=[chat, evidence_df, msg],
     )
     msg.submit(
         answer_question,
-        inputs=[msg, chat, show_chunks, top_k_to_show, retrieval_k, search_type],
-        outputs=[chat, evidence_df, sources_preview],
+        inputs=[msg, chat, retrieval_k, search_type],
+        outputs=[chat, evidence_df, msg],
     )
-    clear.click(clear_all, outputs=[chat, evidence_df, sources_preview])
+    clear.click(clear_all, outputs=[chat, evidence_df, msg])
 
 if __name__ == "__main__":
     demo.launch()
