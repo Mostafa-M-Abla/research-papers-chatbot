@@ -30,7 +30,11 @@ from rag_pipeline import (
     docs_to_citation_rows,
 )
 
-
+# Create (or reuse) a LangSmith dataset from a CSV file.
+# - Validates required columns (question, answer, source_papers)
+# - Avoids duplicating questions already in the dataset
+# - Uploads each row as a LangSmith example (inputs + reference outputs)
+# Returns the LangSmith dataset ID.
 def upsert_langsmith_dataset_from_csv(client: Client, dataset_name: str, csv_path: str) -> str:
     try:
         ds = client.read_dataset(dataset_name=dataset_name)
@@ -74,22 +78,40 @@ def upsert_langsmith_dataset_from_csv(client: Client, dataset_name: str, csv_pat
 
     return dataset_id
 
-
+# Parse the expected source papers field from the CSV.
+# Splits a semicolon-separated string into normalized source tokens
+# used by retrieval-based evaluation metrics.
 def parse_expected_sources(source_papers: str) -> List[str]:
     return [p.strip() for p in str(source_papers).split(";") if p.strip()]
 
-
+# Compute a binary retrieval metric.
+# Returns 1.0 if at least one retrieved chunk originates from
+# an expected source paper; otherwise returns 0.0.
 def retrieval_hit(retrieved: List[Dict[str, Any]], expected_sources: List[str]) -> float:
+    import re
+
+    def normalize(s: str) -> str:
+        # Keep only letters and digits; drop spaces and special characters: ():-,_ etc.
+        return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+
     if not expected_sources:
         return 0.0
-    retrieved_files = " | ".join([r.get("file", "") for r in retrieved]).lower()
+
+    # Normalize all retrieved filenames into one searchable string
+    retrieved_files_norm = normalize(" | ".join([r.get("file", "") for r in retrieved]))
+
+    # Normalize expected tokens and check containment
     for token in expected_sources:
-        t = token.lower()
-        if t and t in retrieved_files:
+        t_norm = normalize(token)
+        if t_norm and t_norm in retrieved_files_norm:
             return 1.0
+
     return 0.0
 
 
+# Run an LLM-as-judge evaluation using a grading rubric.
+# Formats the rubric prompt, invokes the judge model,
+# extracts a JSON score + rationale, and falls back safely on parsing error
 def llm_judge_score(judge, rubric_prompt: str, **kwargs) -> Tuple[float, str]:
     msg = rubric_prompt.format(**kwargs)
     resp = judge.invoke(msg)
@@ -139,7 +161,13 @@ Retrieved context:
 System answer: {prediction}
 """
 
-
+# Build the prediction function used by LangSmith evaluation.
+# For each question, it:
+# - retrieves relevant chunks
+# - formats context
+# - generates an answer
+# - returns predictions along with retrieved chunk metadata
+# The judge LLM is attached to the predictor for reuse by evaluators.
 def make_predictor(retriever, qa_chain, judge_model_name: str, judge_temperature: float = 0.0):
     judge = ChatOpenAI(model=judge_model_name, temperature=judge_temperature)
 
@@ -154,7 +182,11 @@ def make_predictor(retriever, qa_chain, judge_model_name: str, judge_temperature
     predictor._judge = judge  # type: ignore[attr-defined]
     return predictor
 
-
+# Construct a list of LangSmith evaluators.
+# Includes:
+# - retrieval_hit (deterministic retrieval metric)
+# - correctness scoring via LLM judge
+# - groundedness scoring via LLM judge
 def make_evaluators(predictor):
     judge = predictor._judge  # type: ignore[attr-defined]
 
@@ -182,10 +214,10 @@ def make_evaluators(predictor):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--eval_csv", default="rag_eval_questions_20.csv")
+    parser.add_argument("--eval_csv", default="rag_eval_questions.csv")
     parser.add_argument("--pdf_dir", default="research-papers")
     parser.add_argument("--persist_dir", default="chroma_db")
-    parser.add_argument("--dataset_name", default="rag-papers-eval-20")
+    parser.add_argument("--dataset_name", default="rag-papers-evaluate-dataset")
     parser.add_argument("--project_name", default=os.getenv("LANGSMITH_PROJECT", "rag-papers-eval"))
     parser.add_argument("--llm_model", default="gpt-4o-mini")
     parser.add_argument("--judge_model", default="gpt-4o-mini")
