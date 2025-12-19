@@ -1,4 +1,3 @@
-
 import os
 from dotenv import load_dotenv
 import gradio as gr
@@ -48,7 +47,7 @@ else:
 qa_chain = make_qa_chain(model_name="gpt-4o-mini", temperature=0.0)
 
 
-def _make_runtime_retriever(k: int, search_type: str, fetch_k: int, lambda_mult: float):
+def _make_runtime_retriever(k: int, search_type: str):
     """Create a retriever backed by the same persisted vectorstore but with runtime search params."""
     runtime_cfg = IndexConfig(
         pdf_dir=cfg.pdf_dir,
@@ -58,10 +57,20 @@ def _make_runtime_retriever(k: int, search_type: str, fetch_k: int, lambda_mult:
         separators=cfg.separators,
         search_type=search_type,
         k=k,
-        fetch_k=fetch_k,
-        lambda_mult=lambda_mult,
+        # Keep MMR tuning fixed (hidden in UI); can be exposed later if desired.
+        fetch_k=cfg.fetch_k,
+        lambda_mult=cfg.lambda_mult,
     )
     return make_retriever(vectorstore, runtime_cfg)
+
+
+def _rows_to_table(rows):
+    """Convert list[dict] citation rows to a flat table (list[list]) for Gradio Dataframe."""
+    headers = ["rank", "file", "page", "snippet", "source_path"]
+    table = []
+    for r in rows:
+        table.append([r.get(h, "") for h in headers])
+    return table
 
 
 def answer_question(
@@ -71,8 +80,6 @@ def answer_question(
     top_k_to_show: int,
     retrieval_k: int,
     search_type: str,
-    fetch_k: int,
-    lambda_mult: float,
 ):
     """Main chat callback: retrieve -> build context -> answer -> optionally show evidence."""
     message = (message or "").strip()
@@ -82,8 +89,6 @@ def answer_question(
     retriever = _make_runtime_retriever(
         k=int(retrieval_k),
         search_type=search_type,
-        fetch_k=int(fetch_k),
-        lambda_mult=float(lambda_mult),
     )
 
     docs = retriever.invoke(message)
@@ -97,7 +102,7 @@ def answer_question(
     ]
 
     rows = docs_to_citation_rows(docs, max_chars=260)[: int(top_k_to_show)]
-    evidence = rows if show_chunks else []
+    evidence = _rows_to_table(rows) if show_chunks else []
 
     # Short sources preview (always shown)
     sources_lines = [f"[{r['rank']}] {r['file']} — Page {r['page']}" for r in rows[: min(5, len(rows))]]
@@ -137,8 +142,6 @@ with gr.Blocks(title="RAG Research Papers Chatbot") as demo:
             top_k_to_show = gr.Slider(1, 15, value=8, step=1, label="Top-k chunks to display")
             retrieval_k = gr.Slider(1, 20, value=8, step=1, label="Retriever k (chunks fetched)")
             search_type = gr.Dropdown(choices=["mmr", "similarity"], value="mmr", label="Search type")
-            fetch_k = gr.Slider(5, 50, value=20, step=1, label="MMR fetch_k (candidate pool)")
-            lambda_mult = gr.Slider(0.0, 1.0, value=0.5, step=0.05, label="MMR lambda_mult (diversity)")
 
             with gr.Accordion("Evidence table", open=False):
                 evidence_df = gr.Dataframe(
@@ -151,12 +154,12 @@ with gr.Blocks(title="RAG Research Papers Chatbot") as demo:
 
     send.click(
         answer_question,
-        inputs=[msg, chat, show_chunks, top_k_to_show, retrieval_k, search_type, fetch_k, lambda_mult],
+        inputs=[msg, chat, show_chunks, top_k_to_show, retrieval_k, search_type],
         outputs=[chat, evidence_df, sources_preview],
     )
     msg.submit(
         answer_question,
-        inputs=[msg, chat, show_chunks, top_k_to_show, retrieval_k, search_type, fetch_k, lambda_mult],
+        inputs=[msg, chat, show_chunks, top_k_to_show, retrieval_k, search_type],
         outputs=[chat, evidence_df, sources_preview],
     )
     clear.click(clear_all, outputs=[chat, evidence_df, sources_preview])
