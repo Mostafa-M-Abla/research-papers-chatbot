@@ -64,10 +64,15 @@ footer {display:none !important;}
 
 with gr.Blocks(title="RAG Research Papers Chatbot", css=CSS) as demo:
     gr.Markdown(
-        "# 📚 RAG Research Papers Chatbot\n"
-        "This app demonstrates a Retrieval-Augmented Generation (RAG) system over a curated set of research papers about RAG itself!\n\n"
-        "Ask questions about RAG to receive grounded answers generated from retrieved research paper sections. You can adjust the retriever settings in the right panel and inspect the evidence table to see exactly where each answer comes from.\n\n"
-        "The original research papers can be found here."
+        """
+        <h1 style="text-align: center;">📚 RAG Research Papers Chatbot</h1>
+
+        This app demonstrates a Retrieval-Augmented Generation (RAG) system over a curated set of research papers about RAG itself!
+        
+        Ask questions about RAG to receive grounded answers generated from retrieved research paper sections. You can adjust the retriever settings in the right panel and inspect the evidence table to see exactly where each answer comes from.
+
+        The original research papers can be found <a href="https://www.abc.com" target="_blank">here</a>.
+        """
     )
 
     with gr.Row():
@@ -96,7 +101,7 @@ with gr.Blocks(title="RAG Research Papers Chatbot", css=CSS) as demo:
                         background:#f5f5f5;
                         cursor:pointer;
                     ">
-                        Back
+                        ⬅️ Back
                     </button>
                 </a>
                 """
