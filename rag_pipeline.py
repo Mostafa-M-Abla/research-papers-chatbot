@@ -113,9 +113,16 @@ def load_vectorstore(cfg: IndexConfig, persist_dir: str) -> Chroma:
 
 
 def make_retriever(vectorstore: Chroma, cfg: IndexConfig):
+    # Only MMR supports fetch_k and lambda_mult
+    if cfg.search_type == "mmr":
+        search_kwargs = {"k": cfg.k, "fetch_k": cfg.fetch_k, "lambda_mult": cfg.lambda_mult}
+    else:
+        # similarity / similarity_score_threshold etc.
+        search_kwargs = {"k": cfg.k}
+
     return vectorstore.as_retriever(
         search_type=cfg.search_type,
-        search_kwargs={"k": cfg.k, "fetch_k": cfg.fetch_k, "lambda_mult": cfg.lambda_mult},
+        search_kwargs=search_kwargs,
     )
 
 

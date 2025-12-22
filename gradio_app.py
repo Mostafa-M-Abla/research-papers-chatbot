@@ -65,8 +65,9 @@ footer {display:none !important;}
 with gr.Blocks(title="RAG Research Papers Chatbot", css=CSS) as demo:
     gr.Markdown(
         "# 📚 RAG Research Papers Chatbot\n"
-        "Ask questions about the research papers in `research-papers/`.\n\n"
-        "**Tip:** Retrieved chunks are always shown in the Evidence table."
+        "This app demonstrates a Retrieval-Augmented Generation (RAG) system over a curated set of research papers about RAG itself!\n\n"
+        "Ask questions about RAG to receive grounded answers generated from retrieved research paper sections. You can adjust the retriever settings in the right panel and inspect the evidence table to see exactly where each answer comes from.\n\n"
+        "The original research papers can be found here."
     )
 
     with gr.Row():
@@ -103,7 +104,7 @@ with gr.Blocks(title="RAG Research Papers Chatbot", css=CSS) as demo:
 
         with gr.Column(scale=2):
             gr.Markdown("## Retrieval & Evidence")
-            retrieval_k = gr.Slider(1, 20, value=DEFAULT_CFG.k, step=1, label="Retriever k (chunks fetched)")
+            retrieval_k = gr.Slider(1, 15, value=DEFAULT_CFG.k, step=1, label="Retriever k (chunks fetched)")
             search_type = gr.Dropdown(choices=["mmr", "similarity"], value=DEFAULT_CFG.search_type, label="Search type")
 
             gr.Markdown("### Evidence table")
