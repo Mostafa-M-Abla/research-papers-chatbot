@@ -127,7 +127,7 @@ def make_retriever(vectorstore: Chroma, cfg: IndexConfig):
 
 
 def make_qa_chain(model_name: str = "gpt-4o-mini", temperature: float = 0.0):
-    llm = ChatOpenAI(model=model_name, temperature=temperature)
+    llm = ChatOpenAI(model=model_name, temperature=temperature, streaming=True)
     template = """
 SYSTEM: You are a question-answering assistant.
 SYSTEM:

@@ -26,25 +26,32 @@ def _rows_to_table(rows):
 def answer_question(message: str, history: list, retrieval_k: int, search_type: str):
     message = (message or "").strip()
     if not message:
+        # keep output shape the same: (history, evidence, textbox_value)
         return history, [], ""
 
     retriever = make_runtime_retriever(vectorstore, DEFAULT_CFG, k=int(retrieval_k), search_type=search_type)
     docs = retriever.invoke(message)
 
     ctx = format_docs_for_llm(docs)
-    answer = qa_chain.invoke({"question": message, "context": ctx})
-
-    history = history or []
-    history = history + [
-        {"role": "user", "content": message},
-        {"role": "assistant", "content": answer},
-    ]
 
     rows = docs_to_citation_rows(docs, max_chars=260)
     evidence = _rows_to_table(rows)
 
-    # Clear the input textbox after send
-    return history, evidence, ""
+    history = history or []
+    history = history + [{"role": "user", "content": message}]
+    # Add placeholder assistant message we will update while streaming
+    history = history + [{"role": "assistant", "content": ""}]
+
+    partial = ""
+    # Stream answer token-by-token (or chunk-by-chunk)
+    for chunk in qa_chain.stream({"question": message, "context": ctx}):
+        partial += chunk
+        history[-1]["content"] = partial
+        # Clear textbox immediately; keep evidence visible throughout
+        yield history, evidence, ""
+
+    # (Optional) final yield to ensure final state is flushed
+    yield history, evidence, ""
 
 
 def clear_all():
@@ -83,7 +90,7 @@ with gr.Blocks(title="RAG Research Papers Chatbot", theme=themes.Ocean(primary_h
             msg = gr.Textbox(
                 label="Your question",
                 placeholder="e.g., What is GraphRAG? How does LightRAG differ from OpenRAG?",
-                lines=2,
+                lines=1,
             )
 
             with gr.Row():
