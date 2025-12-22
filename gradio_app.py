@@ -6,6 +6,7 @@ Important:
 - Build the index first:  python build_index.py
 """
 from __future__ import annotations
+from gradio import themes
 
 from dotenv import load_dotenv
 import gradio as gr
@@ -62,7 +63,7 @@ footer {display:none !important;}
 .gradio-footer {display:none !important;}
 """
 
-with gr.Blocks(title="RAG Research Papers Chatbot", css=CSS) as demo:
+with gr.Blocks(title="RAG Research Papers Chatbot", theme=themes.Ocean(primary_hue="blue", secondary_hue="slate"), css=CSS) as demo:
     gr.Markdown(
         """
         <h1 style="text-align: center;">📚 RAG Research Papers Chatbot</h1>
@@ -108,11 +109,11 @@ with gr.Blocks(title="RAG Research Papers Chatbot", css=CSS) as demo:
             )
 
         with gr.Column(scale=2):
-            gr.Markdown("## Retrieval & Evidence")
+            gr.Markdown("## Retriever Stettings")
             retrieval_k = gr.Slider(1, 15, value=DEFAULT_CFG.k, step=1, label="Retriever k (chunks fetched)")
             search_type = gr.Dropdown(choices=["mmr", "similarity"], value=DEFAULT_CFG.search_type, label="Search type")
 
-            gr.Markdown("### Evidence table")
+            gr.Markdown("## Evidence Table")
             evidence_df = gr.Dataframe(
                 headers=["rank", "file", "page", "snippet"],
                 datatype=["number", "str", "str", "str"],
