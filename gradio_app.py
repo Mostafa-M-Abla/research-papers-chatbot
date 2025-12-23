@@ -6,8 +6,8 @@ Important:
 - Build the index first:  python build_index.py
 """
 from __future__ import annotations
-from gradio import themes
 
+from gradio import themes
 from dotenv import load_dotenv
 import gradio as gr
 
@@ -17,6 +17,16 @@ from config import DEFAULT_CFG, PERSIST_DIR
 from app_runtime import require_vectorstore, make_runtime_retriever, make_qa
 from rag_pipeline import format_docs_for_llm, docs_to_citation_rows
 
+# -----------------------------
+# Example questions (overlay)
+# -----------------------------
+EXAMPLE_QUESTIONS = [
+    "What is Graph RAG, and where is it mostly used?",
+    "How does LightRAG differ from Open RAG?",
+    "Tell me about two trending topics in the field of RAG.",
+    "How does the paper 'CausalRAG: Integrating Causal Graphs into Retrieval-Augmented Generation' solve the over-reliance on semantic similarity for retrieval?",
+]
+
 
 def _rows_to_table(rows):
     headers = ["rank", "file", "page", "snippet"]
@@ -24,10 +34,15 @@ def _rows_to_table(rows):
 
 
 def answer_question(message: str, history: list, retrieval_k: int, search_type: str):
+    """Streams the assistant response.
+
+    Returns 4 outputs:
+      (chat_history, evidence_table, textbox_value, examples_overlay_visibility_update)
+    """
     message = (message or "").strip()
     if not message:
-        # keep output shape the same: (history, evidence, textbox_value)
-        return history, [], ""
+        # keep output shape the same
+        return history, [], "", gr.update()
 
     retriever = make_runtime_retriever(vectorstore, DEFAULT_CFG, k=int(retrieval_k), search_type=search_type)
     docs = retriever.invoke(message)
@@ -47,15 +62,16 @@ def answer_question(message: str, history: list, retrieval_k: int, search_type: 
     for chunk in qa_chain.stream({"question": message, "context": ctx}):
         partial += chunk
         history[-1]["content"] = partial
-        # Clear textbox immediately; keep evidence visible throughout
-        yield history, evidence, ""
+        # Clear textbox immediately; hide examples once user starts chatting
+        yield history, evidence, "", gr.update(visible=False)
 
-    # (Optional) final yield to ensure final state is flushed
-    yield history, evidence, ""
+    # final flush
+    yield history, evidence, "", gr.update(visible=False)
 
 
 def clear_all():
-    return [], [], ""
+    # show examples again after clearing
+    return [], [], "", gr.update(visible=True)
 
 
 # Load-only: fail fast with a clear message if index missing
@@ -63,20 +79,82 @@ vectorstore = require_vectorstore(DEFAULT_CFG, PERSIST_DIR)
 qa_chain = make_qa(model_name="gpt-4o-mini", temperature=0.0)
 
 # Older Gradio versions accept css in Blocks; keep it here for broad compatibility.
-CSS = """
+CSS = r"""
 footer {display:none !important;}
 .footer {display:none !important;}
 #footer {display:none !important;}
 .gradio-footer {display:none !important;}
+
+/* Make the chat area a positioning context for the overlay */
+#chat_container { position: relative; }
+
+/* Overlay that sits inside the empty chat area */
+#examples_overlay {
+  position: absolute;
+  inset: 52px 18px 18px 18px; /* leave room for Chatbot header */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* allow the chat to be selectable; buttons will override */
+}
+
+/* Inner panel */
+#examples_overlay .examples_panel{
+  width: min(900px, 96%);
+  pointer-events: auto;
+}
+
+/* Grid layout similar to the screenshot */
+#examples_overlay .examples_grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+/* Make Gradio buttons look like "cards" */
+.example_card button{
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.25rem;
+  padding: 18px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 130, 150, 0.35);
+  background: rgba(255,255,255,0.75);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* Hover */
+.example_card button:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+}
+
+/* Small title */
+#examples_overlay .examples_title{
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+/* Responsive: 1 column on narrow screens */
+@media (max-width: 720px){
+  #examples_overlay .examples_grid{ grid-template-columns: 1fr; }
+}
 """
 
-with gr.Blocks(title="RAG Research Papers Chatbot", theme=themes.Ocean(primary_hue="blue", secondary_hue="slate"), css=CSS) as demo:
+
+with gr.Blocks(
+    title="RAG Research Papers Chatbot",
+    theme=themes.Ocean(primary_hue="blue", secondary_hue="slate"),
+    css=CSS,
+) as demo:
     gr.Markdown(
         """
         <h1 style="text-align: center;">📚 RAG Research Papers Chatbot</h1>
 
         This app demonstrates a Retrieval-Augmented Generation (RAG) system over a curated set of research papers about RAG itself!
-        
+
         Ask questions about RAG to receive grounded answers generated from retrieved research paper sections. You can adjust the retriever settings in the right panel and inspect the evidence table to see exactly where each answer comes from.
 
         The original research papers can be found <a href="https://www.abc.com" target="_blank">here</a>.
@@ -85,7 +163,18 @@ with gr.Blocks(title="RAG Research Papers Chatbot", theme=themes.Ocean(primary_h
 
     with gr.Row():
         with gr.Column(scale=3):
-            chat = gr.Chatbot(label="Chat", height=520)
+            # Chat + overlay live in the same positioned container
+            with gr.Group(elem_id="chat_container"):
+                chat = gr.Chatbot(label="Chat", height=520)
+
+                # Overlay: clickable example "cards" inside the empty chat area
+                with gr.Column(visible=True, elem_id="examples_overlay") as examples_overlay:
+                    with gr.Column(elem_classes=["examples_panel"]):
+                        gr.Markdown("Try an example", elem_classes=["examples_title"])
+                        with gr.Row(elem_classes=["examples_grid"]):
+                            ex_btns = []
+                            for q in EXAMPLE_QUESTIONS:
+                                ex_btns.append(gr.Button(q, elem_classes=["example_card"]))
 
             msg = gr.Textbox(
                 label="Your question",
@@ -129,17 +218,26 @@ with gr.Blocks(title="RAG Research Papers Chatbot", theme=themes.Ocean(primary_h
                 interactive=False,
             )
 
+    # Normal send / submit
     send.click(
         answer_question,
         inputs=[msg, chat, retrieval_k, search_type],
-        outputs=[chat, evidence_df, msg],
+        outputs=[chat, evidence_df, msg, examples_overlay],
     )
     msg.submit(
         answer_question,
         inputs=[msg, chat, retrieval_k, search_type],
-        outputs=[chat, evidence_df, msg],
+        outputs=[chat, evidence_df, msg, examples_overlay],
     )
-    clear.click(clear_all, outputs=[chat, evidence_df, msg])
+    clear.click(clear_all, outputs=[chat, evidence_df, msg, examples_overlay])
+
+    # Example buttons: click -> set textbox -> auto-run (and hide overlay)
+    for btn, q in zip(ex_btns, EXAMPLE_QUESTIONS):
+        btn.click(lambda qq=q: qq, outputs=[msg]).then(
+            answer_question,
+            inputs=[msg, chat, retrieval_k, search_type],
+            outputs=[chat, evidence_df, msg, examples_overlay],
+        )
 
 if __name__ == "__main__":
     demo.launch()
