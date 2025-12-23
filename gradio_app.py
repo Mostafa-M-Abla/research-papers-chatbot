@@ -114,23 +114,30 @@ footer {display:none !important;}
 
 /* Make Gradio buttons look like "cards" */
 .example_card button{
-  width: 100%;
-  text-align: left;
-  white-space: normal;
-  line-height: 1.25rem;
-  padding: 18px 18px;
-  border-radius: 12px;
-  border: 1px solid rgba(120, 130, 150, 0.35);
-  background: rgba(255,255,255,0.75);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  background: #f0f4f8 !important;
+  border: 2px solid #d1dbe6 !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+  font-size: 14px !important;
+  text-align: left !important;
 }
 
 /* Hover */
 .example_card button:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+  background: #e3edf7 !important;
+  border-color: #6b9bd1 !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-2px) !important;
 }
 
+.example_card button:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+      
 /* Small title */
 #examples_overlay .examples_title{
   font-weight: 600;
