@@ -113,6 +113,7 @@ footer {display:none !important;}
 }
 
 /* Make Gradio buttons look like "cards" */
+.example_card,
 .example_card button{
   background: #eef5ff !important;   /* light blue tint */
   border: 2px solid #c7dcff !important;
@@ -126,13 +127,14 @@ footer {display:none !important;}
 }
 
 /* Hover */
+.example_card:hover,
 .example_card button:hover{
   background: #dbeafe !important;
   border-color: #3b82f6 !important;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
   transform: translateY(-2px) !important;
 }
-
+.example_card:active,
 .example_card button:active {
   transform: translateY(0) !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
