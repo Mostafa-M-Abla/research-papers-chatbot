@@ -114,22 +114,22 @@ footer {display:none !important;}
 
 /* Make Gradio buttons look like "cards" */
 .example_card button{
-  background: #f0f4f8 !important;
-  border: 2px solid #d1dbe6 !important;
+  background: #eef5ff !important;   /* light blue tint */
+  border: 2px solid #c7dcff !important;
   border-radius: 8px !important;
   padding: 12px 16px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06) !important;
   font-size: 14px !important;
   text-align: left !important;
 }
 
 /* Hover */
 .example_card button:hover{
-  background: #e3edf7 !important;
-  border-color: #6b9bd1 !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+  background: #dbeafe !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
   transform: translateY(-2px) !important;
 }
 
@@ -152,9 +152,7 @@ footer {display:none !important;}
 
 
 with gr.Blocks(
-    title="RAG Research Papers Chatbot",
-    theme=themes.Ocean(primary_hue="blue", secondary_hue="slate"),
-    css=CSS,
+    title="RAG Research Papers Chatbot"
 ) as demo:
     gr.Markdown(
         """
@@ -247,4 +245,4 @@ with gr.Blocks(
         )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(css=CSS, theme=themes.Ocean(primary_hue="blue", secondary_hue="slate"), )
