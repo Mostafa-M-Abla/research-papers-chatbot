@@ -123,6 +123,7 @@ footer {display:none !important;}
   transition: all 0.2s ease !important;
   box-shadow: 0 2px 4px rgba(0,0,0,0.06) !important;
   font-size: 14px !important;
+  font-weight: 500 !important;      /* 👈 remove bold */
   text-align: left !important;
 }
 
