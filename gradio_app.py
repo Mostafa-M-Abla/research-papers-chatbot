@@ -107,7 +107,7 @@ footer {display:none !important;}
 /* Grid layout similar to the screenshot */
 #examples_overlay .examples_grid{
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  grid-template-columns: repeat(1, minmax(260px, 1fr));
   gap: 16px;
   margin-top: 12px;
 }
@@ -177,7 +177,7 @@ with gr.Blocks(
                 # Overlay: clickable example "cards" inside the empty chat area
                 with gr.Column(visible=True, elem_id="examples_overlay") as examples_overlay:
                     with gr.Column(elem_classes=["examples_panel"]):
-                        gr.Markdown("Try an example", elem_classes=["examples_title"])
+                        gr.Markdown("Try an example question", elem_classes=["examples_title"])
                         with gr.Row(elem_classes=["examples_grid"]):
                             ex_btns = []
                             for q in EXAMPLE_QUESTIONS:
