@@ -1,18 +1,21 @@
 """
-Console chatbot (load-only).
+Console chatbot
+
+Runs the chatbot but interaction with teh chatbot is only through terminal (no user interface)
 
 Usage:
   1) python build_index.py
   2) python console_chatbot.py
 """
+
 from __future__ import annotations
 
 from dotenv import load_dotenv
 load_dotenv()
 
-from config import DEFAULT_CFG, PERSIST_DIR
-from app_runtime import require_vectorstore, make_runtime_retriever, make_qa
-from rag_pipeline import format_docs_for_llm, docs_to_citation_rows
+from rag_core.config import DEFAULT_CFG, PERSIST_DIR
+from rag_core.app_runtime import require_vectorstore, make_runtime_retriever, make_qa
+from rag_core.rag_pipeline import format_docs_for_llm, docs_to_citation_rows
 
 
 def print_sources(docs, max_to_show: int = 5):

@@ -2,8 +2,8 @@
 LangSmith batch evaluation script for the RAG Research Papers chatbot.
 
 What this script does:
-- LOAD-ONLY: it NEVER builds / re-embeds your vector store.
-  (Build your index explicitly first with: python build_index.py)
+- LOAD-ONLY: it NEVER builds / re-embeds the vector store.
+  (Build the index explicitly first with: python build_index.py)
 - Creates (or reuses) a LangSmith dataset from a CSV evaluation set.
 - Runs batch evaluation with:
     1) retrieval_hit (deterministic; robust to punctuation/special chars)
@@ -31,9 +31,9 @@ from langsmith import Client
 from langsmith.evaluation import evaluate
 from langsmith.schemas import Example, Run
 
-from config import DEFAULT_CFG, PERSIST_DIR, PDF_DIR
-from app_runtime import require_vectorstore, make_runtime_retriever, make_qa
-from rag_pipeline import format_docs_for_llm, docs_to_citation_rows
+from rag_core.config import DEFAULT_CFG, PERSIST_DIR, PDF_DIR
+from rag_core.app_runtime import require_vectorstore, make_runtime_retriever, make_qa
+from rag_core.rag_pipeline import format_docs_for_llm, docs_to_citation_rows
 
 
 # -----------------------------

@@ -13,7 +13,7 @@ load_dotenv()
 import argparse
 from dataclasses import replace
 
-from config import DEFAULT_CFG, PERSIST_DIR, PDF_DIR
+from rag_core.config import DEFAULT_CFG, PERSIST_DIR, PDF_DIR
 from app_runtime import build_vectorstore
 
 

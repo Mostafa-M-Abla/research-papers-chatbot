@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Tuple
 
-from rag_pipeline import (
+from rag_core.rag_pipeline import (
     IndexConfig,
     index_exists,
     build_and_persist_vectorstore,

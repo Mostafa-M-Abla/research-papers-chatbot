@@ -1,5 +1,5 @@
 """
-Gradio UI (load-only) for the RAG Research Papers chatbot.
+Gradio UI for the RAG Research Papers chatbot.
 
 Important:
 - This UI NEVER builds the vectorstore.
@@ -13,9 +13,9 @@ import gradio as gr
 
 load_dotenv()
 
-from config import DEFAULT_CFG, PERSIST_DIR
-from app_runtime import require_vectorstore, make_runtime_retriever, make_qa
-from rag_pipeline import format_docs_for_llm, docs_to_citation_rows
+from rag_core.config import DEFAULT_CFG, PERSIST_DIR
+from rag_core.app_runtime import require_vectorstore, make_runtime_retriever, make_qa
+from rag_core.rag_pipeline import format_docs_for_llm, docs_to_citation_rows
 
 # -----------------------------
 # Example questions (overlay)
@@ -165,7 +165,7 @@ with gr.Blocks(
 
         Ask questions about RAG to receive grounded answers generated from retrieved research paper sections. You can adjust the retriever settings in the right panel and inspect the evidence table to see exactly where each answer comes from.
 
-        The original research papers can be found <a href="https://www.abc.com" target="_blank">here</a>.
+        The original research papers can be found <a href="https://huggingface.co/spaces/mostafa-abla/portfolio_huggingface_gradio/tree/main/Rag_Reserach_Papers_Chatbot/research-papers" target="_blank">here</a>.
         """
     )
 

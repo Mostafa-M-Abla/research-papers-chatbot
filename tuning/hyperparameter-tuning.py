@@ -1,16 +1,15 @@
 import os
 import mlflow
-import pandas as pd
 from dataclasses import replace
+from pathlib import Path
 
-from config import DEFAULT_CFG, PDF_DIR, PERSIST_DIR
-from app_runtime import require_vectorstore, build_vectorstore, make_runtime_retriever, make_qa
-from rag_pipeline import format_docs_for_llm
+from rag_core.config import DEFAULT_CFG, PERSIST_DIR
+from rag_core.app_runtime import require_vectorstore, build_vectorstore
 
 from langsmith import Client
 from langsmith.evaluation import evaluate as ls_evaluate
 
-from evaluate import (
+from evaluation.evaluate import (
     upsert_langsmith_dataset_from_csv,  # if you want to reuse LangSmith dataset creation
     make_predictor,
     make_evaluators,
@@ -49,25 +48,46 @@ def run_langsmith_eval(vectorstore, cfg, dataset_id: str, llm_model: str, judge_
 
     # Aggregate metrics from LangSmith results
     scores = {"retrieval_hit": [], "correctness_0_10": [], "groundedness_0_10": []}
-    for r in results:
-        eval_results = r.get("evaluation_results", []) or []
-        # handle list-of-dicts format
-        if isinstance(eval_results, list):
-            for item in eval_results:
-                k = item.get("key")
-                if k in scores and item.get("score") is not None:
-                    scores[k].append(float(item["score"]))
-        # handle dict format
-        elif isinstance(eval_results, dict):
-            for k in scores.keys():
-                v = eval_results.get(k)
-                if isinstance(v, dict) and v.get("score") is not None:
-                    scores[k].append(float(v["score"]))
 
-    # means
-    out = {}
-    for k, vals in scores.items():
-        out[k] = sum(vals) / len(vals) if vals else None
+    for r in results:
+        er = r.get("evaluation_results") or {}
+
+        # Newer LangSmith shape: {"results": [EvaluationResult(...), ...]}
+        if isinstance(er, dict) and isinstance(er.get("results"), list):
+            items = er["results"]
+
+        # Some older shapes: list of results
+        elif isinstance(er, list):
+            items = er
+
+        # Rare: dict keyed by metric name
+        elif isinstance(er, dict):
+            items = []
+            for kk, vv in er.items():
+                # vv could be dict-like
+                if isinstance(vv, dict) and "score" in vv:
+                    items.append({"key": kk, "score": vv.get("score")})
+                else:
+                    items.append(vv)
+        else:
+            items = []
+
+        for item in items:
+            # --- handle EvaluationResult objects ---
+            if hasattr(item, "key") and hasattr(item, "score"):
+                k = item.key
+                s = item.score
+            # --- handle dicts ---
+            elif isinstance(item, dict):
+                k = item.get("key")
+                s = item.get("score")
+            else:
+                continue
+
+            if k in scores and s is not None:
+                scores[k].append(float(s))
+
+    out = {k: (sum(v) / len(v) if v else None) for k, v in scores.items()}
     return out
 
 
@@ -81,7 +101,9 @@ def main():
     ks = [4, 6]
 
     # LangSmith dataset (reuse your CSV)
-    eval_csv = "rag_eval_questions.csv"
+    eval_csv: str = str(
+        Path(__file__).resolve().parent.parent / "evaluation/rag_eval_questions.csv"
+    )
     dataset_name = "rag-papers-eval-hyper"
     client = Client()
     dataset_id = upsert_langsmith_dataset_from_csv(client, dataset_name, eval_csv)
@@ -115,6 +137,7 @@ def main():
                 })
 
                 metrics = run_langsmith_eval(vectorstore, cfg, dataset_id, llm_model, judge_model)
+                print("DEBUG metrics to log:", metrics)
 
                 for mk, mv in metrics.items():
                     if mv is not None:
