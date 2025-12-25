@@ -1,5 +1,7 @@
 # 📚 RAG Research Papers Chatbot
 
+Try the project live at [mostafaabla.com](https://mostafaabla.com/)
+
 A complete **Retrieval-Augmented Generation (RAG)** project built around a curated collection of academic research papers *about RAG itself*.
 
 The project demonstrates:
